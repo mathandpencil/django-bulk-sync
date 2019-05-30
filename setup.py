@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="django-bulk-sync",
-    version='1.0.0',
+    version='1.1.0',
     description="Combine bulk add, update, and delete into a single call.",
     long_description=open("README.md").read(),
     long_description_content_type='text/markdown',

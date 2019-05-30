@@ -1,18 +1,21 @@
 import logging
-from django.db import transaction
 
+from django.db import transaction
 from bulk_update.helper import bulk_update
 
 logger = logging.getLogger(__name__)
 
 
-def bulk_sync(new_models, key_fields, filters):
+def bulk_sync(new_models, key_fields, filters, batch_size=None):
     """ Combine bulk create, update, and delete.  Make the DB match a set of in-memory objects.
 
     `new_models`: Django ORM objects that are the desired state.  They may or may not have `id` set.
     `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows.  If a foreign key
             is being used as a key field, be sure to pass the `fieldname_id` rather than the `fieldname`.
     `filters`: Q() filters specifying the subset of the database to work in.
+    `batch_size`: passes through to Django `bulk_create.batch_size` and `bulk_update.batch_size`, and controls
+            how many objects are created/updated per SQL query.
+
     """
     db_class = new_models[0].__class__
 
@@ -40,9 +43,9 @@ def bulk_sync(new_models, key_fields, filters):
                 new_obj.id = old_obj.id
                 existing_objs.append(new_obj)
 
-        db_class.objects.bulk_create(new_objs)
+        db_class.objects.bulk_create(new_objs, batch_size=batch_size)
 
-        bulk_update(existing_objs)
+        bulk_update(existing_objs, batch_size=batch_size)
 
         # delete stale ones...
         objs.filter(pk__in=[_.pk for _ in list(obj_dict.values())]).delete()
