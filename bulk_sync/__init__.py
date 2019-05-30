@@ -38,6 +38,8 @@ def bulk_sync(new_models, key_fields, filters, batch_size=None):
             old_obj = obj_dict.pop(get_key(new_obj), None)
             if old_obj is None:
                 # This is a new object, so create it.
+                # Make sure the primary key field is clear.
+                new_obj.pk = None
                 new_objs.append(new_obj)
             else:
                 new_obj.id = old_obj.id
