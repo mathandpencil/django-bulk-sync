@@ -5,6 +5,7 @@ setup(
     version='1.0.0',
     description="Combine bulk add, update, and delete into a single call.",
     long_description=open("README.md").read(),
+    long_description_content_type='text/markdown',
     url="https://github.com/mathandpencil/django-bulk-sync",
     author="Scott Stafford",
     author_email="scott.stafford+bulksync@gmail.com",
