@@ -1,9 +1,21 @@
 # django-bulk-sync
-Combine bulk add, update, and delete into a single call.
+Combine bulk create, update, and delete into a single call.
 
-django-bulk-sync is a package to support the Django ORM, which synthesizes the concepts of bulk_create, bulk_update, and delete into a single call to `bulk_sync`.
+`django-bulk-sync` is a package for the Django ORM that combines bulk_create, bulk_update, and delete into a single method call to `bulk_sync`. 
 
-## An example:
+It manages all necessary creates, updates, and deletes with as few database calls as possible to maximize performance.
+
+## Installation
+
+The package is available on pip as [django-bulk-sync][django-bulk-sync].  Run:
+
+`pip install django-bulk-sync`
+
+then import via:
+
+`from bulk_sync import bulk_sync`
+
+## A Usage Scenario
 
 Companies have zero or more Employees. You want to efficiently sync the names of all employees for a single `Company` from an import from that company, but some are added, updated, or removed.  The simple approach is inefficient -- read the import line by line, and:
 
@@ -14,10 +26,13 @@ For each of N records:
 
 Then figure out some way to identify what was missing and delete it.  As is so often the case, the speed of this process is controlled mostly by the number of queries run, and here it is about two queries for every record, and so O(N).
 
-Instead, with bulk_sync, we can avoid the O(N) number of queries, and simplify the logic we have to write as well:
+Instead, with `bulk_sync`, we can avoid the O(N) number of queries, and simplify the logic we have to write as well. 
 	
+## Example Usage
+
 ```python
 from django.db.models import Q
+from bulk_sync import bulk_sync
 
 new_models = []
 for line in company_import_file:
@@ -43,15 +58,11 @@ print("Results of bulk_sync: "
 
 Under the hood, it will atomically call `bulk_create`, `bulk_update`, and a single queryset `delete()` call, to correctly and efficiently update all fields of all employees for the filtered Company, using `name` to match properly. 
 
-## Installation and Quick Start
+## Argument Reference
 
-The package is available on pip as [django-bulk-sync][django-bulk-sync].  Run:
-
-`pip install django-bulk-sync`
-
-then import via:
-
-`from bulk_sync import bulk_sync`
-
-And use as in the example above.
-
+`def bulk_sync(new_models, key_fields, filters, batch_size=None):`
+- `new_models`: An iterable of Django ORM `Model` objects that you want stored in the database. They may or may not have `id` set, but you should not have already called `save()` on them.
+- `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows.  If a foreign key is being used as a key field, be sure to pass the `fieldname_id` rather than the `fieldname`.
+- `filters`: Q() filters specifying the subset of the database to work in.
+- `batch_size`: passes through to Django `bulk_create.batch_size` and `bulk_update.batch_size`, and controls how many objects are created/updated per SQL query.
+    """
