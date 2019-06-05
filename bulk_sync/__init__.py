@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import logging
 
 from django.db import transaction
@@ -67,7 +68,8 @@ def bulk_compare(old_models, new_models, key_fields, ignore_fields=None):
     """ Compare two sets of models by `key_fields`.
     `old_models`: Iterable of Django ORM objects to compare.
     `new_models`: Iterable of Django ORM objects to compare.
-
+    `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows.  If a foreign key
+            is being used as a key field, be sure to pass the `fieldname_id` rather than the `fieldname`.
     `ignore_fields`: (optional) If set, provide field names that should not be considered when comparing objects.
 
     Returns: dict of
@@ -82,10 +84,9 @@ def bulk_compare(old_models, new_models, key_fields, ignore_fields=None):
     def get_key(obj):
         return tuple(getattr(obj, k) for k in key_fields)
 
-    old_obj_dict = {get_key(obj): obj for obj in old_models}
+    old_obj_dict = OrderedDict((get_key(obj), obj) for obj in old_models)
 
     new_objs = []
-    existing_objs = []
     change_details = {}
     updated_objs = []
     unchanged_objs = []
@@ -107,11 +108,9 @@ def bulk_compare(old_models, new_models, key_fields, ignore_fields=None):
             else:
                 unchanged_objs.append(new_obj)
 
-            existing_objs.append(new_obj)
-
     return {
         "added": new_objs,
-        "unchanged": existing_objs,
+        "unchanged": unchanged_objs,
         "updated": updated_objs,
         "updated_details": change_details,
         "removed": old_obj_dict.values(),

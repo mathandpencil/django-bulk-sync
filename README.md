@@ -1,7 +1,7 @@
 # django-bulk-sync
 Combine bulk create, update, and delete into a single call.
 
-`django-bulk-sync` is a package for the Django ORM that combines bulk_create, bulk_update, and delete into a single method call to `bulk_sync`. 
+`django-bulk-sync` is a package for the Django ORM that combines bulk_create, bulk_update, and delete into a single method call to `bulk_sync`.  
 
 It manages all necessary creates, updates, and deletes with as few database calls as possible to maximize performance.
 
@@ -61,8 +61,24 @@ Under the hood, it will atomically call `bulk_create`, `bulk_update`, and a sing
 ## Argument Reference
 
 `def bulk_sync(new_models, key_fields, filters, batch_size=None):`
+Combine bulk create, update, and delete.  Make the DB match a set of in-memory objects.
 - `new_models`: An iterable of Django ORM `Model` objects that you want stored in the database. They may or may not have `id` set, but you should not have already called `save()` on them.
 - `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows.  If a foreign key is being used as a key field, be sure to pass the `fieldname_id` rather than the `fieldname`.
 - `filters`: Q() filters specifying the subset of the database to work in.
 - `batch_size`: passes through to Django `bulk_create.batch_size` and `bulk_update.batch_size`, and controls how many objects are created/updated per SQL query.
-    """
+
+`def bulk_compare(old_models, new_models, key_fields, ignore_fields=None):`
+Compare two sets of models by `key_fields`.
+- `old_models`: Iterable of Django ORM objects to compare.
+- `new_models`: Iterable of Django ORM objects to compare.
+- `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows.  If a foreign key
+        is being used as a key field, be sure to pass the `fieldname_id` rather than the `fieldname`.
+- `ignore_fields`: (optional) If set, provide field names that should not be considered when comparing objects.
+- Returns dict of: ```
+    {
+        'added': list of all added objects.
+        'unchanged': list of all unchanged objects.
+        'updated': list of all updated objects.
+        'updated_details': dict of {obj: {field_name: (old_value, new_value)}} for all changed fields in each updated object.
+        'removed': list of all removed objects.
+    } ```

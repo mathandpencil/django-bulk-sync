@@ -2,12 +2,12 @@ from django.conf import settings
 from django.db.models import Q
 from django.test import TestCase
 
+from bulk_sync import bulk_compare
 from bulk_sync import bulk_sync
 from .models import Company, Employee
 
 
 class BulkSyncTests(TestCase):
-
     def setUp(self):
         pass
 
@@ -29,14 +29,11 @@ class BulkSyncTests(TestCase):
             Employee(name="Bob", age=50, company=c1),
         ]
 
-        ret = bulk_sync(
-            new_models=new_objs,
-            filters=Q(company_id=c1.id),
-            key_fields=('name', ))
+        ret = bulk_sync(new_models=new_objs, filters=Q(company_id=c1.id), key_fields=("name",))
 
-        self.assertEqual(2, ret['stats']['updated'])
-        self.assertEqual(2, ret['stats']['created'])
-        self.assertEqual(1, ret['stats']['deleted'])
+        self.assertEqual(2, ret["stats"]["updated"])
+        self.assertEqual(2, ret["stats"]["created"])
+        self.assertEqual(1, ret["stats"]["deleted"])
 
         self.assertEqual(4, Employee.objects.filter(company=c1).count())
         self.assertEqual(1, Employee.objects.filter(company=c2).count())
@@ -72,11 +69,58 @@ class BulkSyncTests(TestCase):
     def test_pk_set_but_keyfield_changes_ignores_pk(self):
         c1 = Company.objects.create(name="Foo Products, Ltd.")
         e1 = Employee.objects.create(name="Scott", age=40, company=c1)
-        new_objs = [
-            Employee(id=e1.id, name="Notscott", age=41, company=c1),
+        new_objs = [Employee(id=e1.id, name="Notscott", age=41, company=c1)]
+
+        ret = bulk_sync(new_models=new_objs, filters=Q(company_id=c1.id), key_fields=("name",))
+
+
+class BulkCompareTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.c1 = Company.objects.create(name="Foo Products, Ltd.")
+        cls.c2 = Company.objects.create(name="Bar Microcontrollers, Inc.")
+
+        cls.e1 = Employee.objects.create(name="Scott", age=40, company=cls.c1)
+        cls.e2 = Employee.objects.create(name="Isaac", age=9, company=cls.c1)
+        cls.e3 = Employee.objects.create(name="Zoe", age=9, company=cls.c1)
+        cls.e4 = Employee.objects.create(name="Bob", age=25, company=cls.c2)
+
+        # We should update Scott's and Isaac's age, delete Zoe, add Newguy and
+        # add a second Bob (since he's not in company c1, which we filtered on.)
+        cls.new_objs = [
+            Employee(name="Scott", age=41, company=cls.c1),
+            Employee(name="Isaac", age=9, company=cls.c1),
+            Employee(name="Newguy", age=10, company=cls.c1),
+            Employee(name="Bob", age=50, company=cls.c1),
         ]
 
-        ret = bulk_sync(
+    def test_bulk_compare(self):
+        c1 = self.c1
+        e3 = self.e3
+        new_objs = self.new_objs
+
+        ret = bulk_compare(old_models=Employee.objects.filter(company=c1), new_models=new_objs, key_fields=("name",))
+
+        self.assertEqual([new_objs[2], new_objs[3]], ret["added"])
+        self.assertEqual([e3], list(ret["removed"]))
+        self.assertEqual([new_objs[0]], ret["updated"])
+        self.assertEqual({new_objs[0]: {"age": (40, 41)}}, ret["updated_details"])
+        self.assertEqual([new_objs[1]], ret["unchanged"])
+
+    def test_bulk_compare_with_ignore_fields(self):
+        c1 = self.c1
+        e3 = self.e3
+        new_objs = self.new_objs
+
+        ret = bulk_compare(
+            old_models=Employee.objects.filter(company=c1).order_by("name"),
             new_models=new_objs,
-            filters=Q(company_id=c1.id),
-            key_fields=('name', ))
+            key_fields=("name",),
+            ignore_fields=("age",),
+        )
+
+        self.assertEqual([new_objs[2], new_objs[3]], ret["added"])
+        self.assertEqual([e3], list(ret["removed"]))
+        self.assertEqual([], ret["updated"])
+        self.assertEqual({}, ret["updated_details"])
+        self.assertEqual([new_objs[0], new_objs[1]], ret["unchanged"])
