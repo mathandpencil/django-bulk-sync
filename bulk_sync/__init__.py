@@ -2,7 +2,7 @@ from collections import OrderedDict
 import logging
 
 from django.db import transaction
-from bulk_update.helper import bulk_update
+from django_bulk_update.helper import bulk_update
 
 logger = logging.getLogger(__name__)
 
