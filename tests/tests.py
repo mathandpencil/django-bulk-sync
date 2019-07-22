@@ -8,6 +8,8 @@ from .models import Company, Employee
 
 
 class BulkSyncTests(TestCase):
+    """ Test `bulk_sync` method """
+
     def setUp(self):
         pass
 
@@ -75,6 +77,8 @@ class BulkSyncTests(TestCase):
 
 
 class BulkCompareTests(TestCase):
+    """ Test `bulk_compare` method """
+
     @classmethod
     def setUpTestData(cls):
         cls.c1 = Company.objects.create(name="Foo Products, Ltd.")
@@ -107,7 +111,7 @@ class BulkCompareTests(TestCase):
         self.assertEqual({new_objs[0]: {"age": (40, 41)}}, ret["updated_details"])
         self.assertEqual([new_objs[1]], ret["unchanged"])
 
-    def test_bulk_compare_with_ignore_fields(self):
+    def test_bulk_compare_with_ignore_int_field(self):
         c1 = self.c1
         e3 = self.e3
         new_objs = self.new_objs
@@ -124,3 +128,21 @@ class BulkCompareTests(TestCase):
         self.assertEqual([], ret["updated"])
         self.assertEqual({}, ret["updated_details"])
         self.assertEqual([new_objs[0], new_objs[1]], ret["unchanged"])
+
+    def test_bulk_compare_with_ignore_relation_field(self):
+        c1 = self.c1
+        e3 = self.e3
+        new_objs = self.new_objs
+
+        ret = bulk_compare(
+            old_models=Employee.objects.filter(company=c1).order_by("name"),
+            new_models=new_objs,
+            key_fields=("name",),
+            ignore_fields=("company_id",),
+        )
+
+        self.assertEqual([new_objs[2], new_objs[3]], ret["added"])
+        self.assertEqual([e3], list(ret["removed"]))
+        self.assertEqual([new_objs[0]], ret["updated"])
+        self.assertEqual({new_objs[0]: {'age': (40, 41)}}, ret["updated_details"])
+        self.assertEqual([new_objs[1]], ret["unchanged"])

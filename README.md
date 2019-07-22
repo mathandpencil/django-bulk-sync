@@ -82,3 +82,7 @@ Compare two sets of models by `key_fields`.
         'updated_details': dict of {obj: {field_name: (old_value, new_value)}} for all changed fields in each updated object.
         'removed': list of all removed objects.
     } ```
+
+## Frameworks Supported
+
+This library is tested using Python 3 against Django 1.11 and Django 2.2.

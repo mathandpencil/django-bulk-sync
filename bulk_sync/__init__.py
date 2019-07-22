@@ -125,6 +125,7 @@ def compare_objs(obj1, obj2, ignore_fields=None):
     `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows.  If a foreign key
             is being used as a key field, be sure to pass the `fieldname_id` rather than the `fieldname`.
     `ignore_fields`: (optional) If set, provide field names that should not be considered when comparing objects.
+            If a foreign key is being used as an ignore_field, be sure to pass the `fieldname_id` rather than the `fieldname`.
 
     Returns: dict of changed fields and their old/new values: {field_name: (old_value, new_value)}
     """
@@ -132,11 +133,11 @@ def compare_objs(obj1, obj2, ignore_fields=None):
     ret = {}
     fields = obj1._meta.get_fields()
     for f in fields:
-        if ignore_fields and f.name in ignore_fields:
+        if ignore_fields and f.attname in ignore_fields:
             continue
 
-        v1 = f.to_python(getattr(obj1, f.name))
-        v2 = f.to_python(getattr(obj2, f.name))
+        v1 = f.to_python(getattr(obj1, f.attname))
+        v2 = f.to_python(getattr(obj2, f.attname))
         if v1 != v2:
             ret[f.name] = (v1, v2)
 
