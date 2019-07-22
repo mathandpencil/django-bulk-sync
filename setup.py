@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="django-bulk-sync",
-    version='1.3.0',
+    version='1.3.1',
     description="Combine bulk add, update, and delete into a single call.",
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -18,6 +18,8 @@ setuptools.setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
         'Framework :: Django',
+        'Framework :: Django :: 1.11',
+        'Framework :: Django :: 2.2',
     ],
     zip_safe=False,
 )
