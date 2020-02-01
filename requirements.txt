@@ -1,2 +1,1 @@
-Django>=1.8
-django-bulk-update>2
+Django>=2.2

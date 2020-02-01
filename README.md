@@ -49,6 +49,7 @@ key_fields = ('name', )
 ret = bulk_sync(
         new_models=new_models,
         filters=filters,
+        fields=['name', 'phone_number', ...],
         key_fields=key_fields)
 
 print("Results of bulk_sync: "
@@ -66,6 +67,7 @@ Combine bulk create, update, and delete.  Make the DB match a set of in-memory o
 - `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows.  If a foreign key is being used as a key field, be sure to pass the `fieldname_id` rather than the `fieldname`.
 - `filters`: Q() filters specifying the subset of the database to work in.
 - `batch_size`: passes through to Django `bulk_create.batch_size` and `bulk_update.batch_size`, and controls how many objects are created/updated per SQL query.
+- `fields`: a list of fields to update - passed through to Django's built in `buld_update` 
 
 `def bulk_compare(old_models, new_models, key_fields, ignore_fields=None):`
 Compare two sets of models by `key_fields`.
@@ -85,4 +87,4 @@ Compare two sets of models by `key_fields`.
 
 ## Frameworks Supported
 
-This library is tested using Python 3 against Django 1.11 and Django 2.2.
+This library is tested using Python 3 against Django 2.2.

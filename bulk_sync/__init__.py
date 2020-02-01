@@ -2,12 +2,11 @@ from collections import OrderedDict
 import logging
 
 from django.db import transaction
-from django_bulk_update.helper import bulk_update
 
 logger = logging.getLogger(__name__)
 
 
-def bulk_sync(new_models, key_fields, filters, batch_size=None):
+def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None):
     """ Combine bulk create, update, and delete.  Make the DB match a set of in-memory objects.
 
     `new_models`: Django ORM objects that are the desired state.  They may or may not have `id` set.
@@ -16,9 +15,16 @@ def bulk_sync(new_models, key_fields, filters, batch_size=None):
     `filters`: Q() filters specifying the subset of the database to work in.
     `batch_size`: passes through to Django `bulk_create.batch_size` and `bulk_update.batch_size`, and controls
             how many objects are created/updated per SQL query.
+    `fields`: a list of fields to update - passed to django's bulk_update
 
     """
     db_class = new_models[0].__class__
+
+    if not fields:
+        # Get a list of fields that aren't PKs and aren't editable (e.g. auto_add_now) for bulk_update
+        fields = [field.name
+                  for field in db_class._meta.fields
+                  if not field.primary_key and not field.auto_created and field.editable]
 
     with transaction.atomic():
         objs = db_class.objects.all()
@@ -45,8 +51,7 @@ def bulk_sync(new_models, key_fields, filters, batch_size=None):
                 existing_objs.append(new_obj)
 
         db_class.objects.bulk_create(new_objs, batch_size=batch_size)
-
-        bulk_update(existing_objs, batch_size=batch_size)
+        db_class.objects.bulk_update(existing_objs, fields=fields, batch_size=batch_size)
 
         # delete stale ones...
         objs.filter(pk__in=[_.pk for _ in list(obj_dict.values())]).delete()
