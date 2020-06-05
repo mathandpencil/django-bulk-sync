@@ -1,12 +1,11 @@
 from collections import OrderedDict
 import logging
-
 from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
 
-def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None):
+def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None, skip_creates=False, skip_updates=False, skip_deletes=False):
     """ Combine bulk create, update, and delete.  Make the DB match a set of in-memory objects.
 
     `new_models`: Django ORM objects that are the desired state.  They may or may not have `id` set.
@@ -50,15 +49,23 @@ def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None):
                 new_obj.id = old_obj.id
                 existing_objs.append(new_obj)
 
-        db_class.objects.bulk_create(new_objs, batch_size=batch_size)
-        db_class.objects.bulk_update(existing_objs, fields=fields, batch_size=batch_size)
+        if skip_creates is False:
+            db_class.objects.bulk_create(new_objs, batch_size=batch_size)
+            
+        if skip_updates is False:
+            db_class.objects.bulk_update(existing_objs, fields=fields, batch_size=batch_size)
 
-        # delete stale ones...
-        objs.filter(pk__in=[_.pk for _ in list(obj_dict.values())]).delete()
+        if skip_deletes is False:
+            # delete stale objects
+            objs.filter(pk__in=[_.pk for _ in list(obj_dict.values())]).delete()
 
         assert len(existing_objs) == len(new_models) - len(new_objs)
 
-        stats = {"created": len(new_objs), "updated": len(new_models) - len(new_objs), "deleted": len(obj_dict)}
+        stats = {
+            "created": 0 if skip_creates else len(new_objs), 
+            "updated": 0 if skip_updates else (len(new_models) - len(new_objs)), 
+            "deleted": 0 if skip_deletes else len(obj_dict)
+        }
 
         logger.debug(
             "{}: {} created, {} updated, {} deleted.".format(
