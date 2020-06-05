@@ -49,25 +49,25 @@ def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None, ski
                 new_obj.id = old_obj.id
                 existing_objs.append(new_obj)
 
-    if skip_creates is False:
-        db_class.objects.bulk_create(new_objs, batch_size=batch_size)
-        
-    if skip_updates is False:
-        db_class.objects.bulk_update(existing_objs, fields=fields, batch_size=batch_size)
+        if skip_creates is False:
+            db_class.objects.bulk_create(new_objs, batch_size=batch_size)
+            
+        if skip_updates is False:
+            db_class.objects.bulk_update(existing_objs, fields=fields, batch_size=batch_size)
 
-    if skip_deletes is False:
-        # delete stale objects
-        objs.filter(pk__in=[_.pk for _ in list(obj_dict.values())]).delete()
+        if skip_deletes is False:
+            # delete stale objects
+            objs.filter(pk__in=[_.pk for _ in list(obj_dict.values())]).delete()
 
-    assert len(existing_objs) == len(new_models) - len(new_objs)
+        assert len(existing_objs) == len(new_models) - len(new_objs)
 
-    stats = {"created": len(new_objs), "updated": len(new_models) - len(new_objs), "deleted": len(obj_dict)}
+        stats = {"created": len(new_objs), "updated": len(new_models) - len(new_objs), "deleted": len(obj_dict)}
 
-    logger.debug(
-        "{}: {} created, {} updated, {} deleted.".format(
-            db_class.__name__, stats["created"], stats["updated"], stats["deleted"]
+        logger.debug(
+            "{}: {} created, {} updated, {} deleted.".format(
+                db_class.__name__, stats["created"], stats["updated"], stats["deleted"]
+            )
         )
-    )
 
     return {"stats": stats}
 
