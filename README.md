@@ -70,6 +70,10 @@ Combine bulk create, update, and delete. Make the DB match a set of in-memory ob
 -   `filters`: Q() filters specifying the subset of the database to work in. Use `None` or `[]` if you want to sync against the entire table.
 -   `batch_size`: passes through to Django `bulk_create.batch_size` and `bulk_update.batch_size`, and controls how many objects are created/updated per SQL query.
 -   `fields`: (optional) List of fields to update. If not set, will sync all fields that are editable and not auto-created.
+-   `skip_creates`: If truthy, will not perform any object creations needed to fully sync. Defaults to not skip.
+-   `skip_updates`: If truthy, will not perform any object updates needed to fully sync. Defaults to not skip. 
+-   `skip_deletes`: If truthy, will not perform any object deletions needed to fully sync. Defaults to not skip. 
+
 -   Returns a dict:
 
     {

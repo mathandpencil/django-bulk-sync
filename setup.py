@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="django-bulk-sync",
-    version='2.0.0',
+    version='2.1.0',
     description="Combine bulk add, update, and delete into a single call.",
     long_description=long_description,
     long_description_content_type='text/markdown',

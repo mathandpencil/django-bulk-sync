@@ -15,7 +15,9 @@ def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None, ski
     `batch_size`: passes through to Django `bulk_create.batch_size` and `bulk_update.batch_size`, and controls
             how many objects are created/updated per SQL query.
     `fields`: (optional) list of fields to update. If not set, will sync all fields that are editable and not auto-created.
-
+    `skip_creates`: If truthy, will not perform any object creations needed to fully sync. Defaults to not skip.
+    `skip_updates`: If truthy, will not perform any object updates needed to fully sync. Defaults to not skip. 
+    `skip_deletes`: If truthy, will not perform any object deletions needed to fully sync. Defaults to not skip. 
     """
     db_class = new_models[0].__class__
 
@@ -49,13 +51,13 @@ def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None, ski
                 new_obj.id = old_obj.id
                 existing_objs.append(new_obj)
 
-        if skip_creates is False:
+        if not skip_creates:
             db_class.objects.bulk_create(new_objs, batch_size=batch_size)
             
-        if skip_updates is False:
+        if not skip_updates:
             db_class.objects.bulk_update(existing_objs, fields=fields, batch_size=batch_size)
 
-        if skip_deletes is False:
+        if not skip_deletes:
             # delete stale objects
             objs.filter(pk__in=[_.pk for _ in list(obj_dict.values())]).delete()
 
