@@ -104,6 +104,58 @@ class BulkSyncTests(TestCase):
         self.assertEqual(0, ret["stats"]["created"])
         self.assertEqual(0, ret["stats"]["deleted"])
 
+    def test_skip_deletes(self):
+        c1 = Company.objects.create(name="My Company LLC")
+
+        e1 = Employee.objects.create(name="Scott", age=40, company=c1)
+        e2 = Employee.objects.create(name="Isaac", age=9, company=c1)
+
+        # update Scott - this makes Isaac is the "stale object" that would be deleted if skip_deletes were False
+        new_objs = [
+            Employee(name="Scott", age=41, company=c1),
+        ]
+
+        # but Isaac should remain when the skip_deletes flag is True
+        ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), skip_deletes=True)
+
+        self.assertEqual(2, Employee.objects.count())
+        self.assertEqual(["Scott", "Isaac"], [x.name for x in Employee.objects.all().order_by('id')])
+
+    def test_skip_creates(self):
+        c1 = Company.objects.create(name="My Company LLC")
+
+        e1 = Employee.objects.create(name="Scott", age=40, company=c1)
+        e2 = Employee.objects.create(name="Isaac", age=9, company=c1)
+
+        # create a new employee that will be ignored
+        new_objs = [
+            Employee(name="John", age=52, company=c1)
+        ]
+
+        ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), skip_creates=True, skip_deletes=True)
+
+        self.assertEqual(2, Employee.objects.count())
+        self.assertEqual(["Scott", "Isaac"], [x.name for x in Employee.objects.all().order_by('id')])
+
+    def test_skip_updates(self):
+        c1 = Company.objects.create(name="My Company LLC")
+
+        e1 = Employee.objects.create(name="Scott", age=40, company=c1)
+        e2 = Employee.objects.create(name="Isaac", age=9, company=c1)
+
+        # create a new employee that will be ignored
+        new_objs = [
+            Employee(name="Scott", age=100, company=c1)
+        ]
+
+        ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), skip_updates=True)
+
+        # the age should not have been updated
+        new_e1 = Employee.objects.get(id=e1.id)
+        self.assertEqual(40, new_e1.age)
+
+
+
 class BulkCompareTests(TestCase):
     """ Test `bulk_compare` method """
 
