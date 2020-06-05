@@ -61,7 +61,11 @@ def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None, ski
 
         assert len(existing_objs) == len(new_models) - len(new_objs)
 
-        stats = {"created": len(new_objs), "updated": len(new_models) - len(new_objs), "deleted": len(obj_dict)}
+        stats = {
+            "created": 0 if skip_creates else len(new_objs), 
+            "updated": 0 if skip_updates else (len(new_models) - len(new_objs)), 
+            "deleted": 0 if skip_deletes else len(obj_dict)
+        }
 
         logger.debug(
             "{}: {} created, {} updated, {} deleted.".format(

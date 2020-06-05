@@ -118,8 +118,16 @@ class BulkSyncTests(TestCase):
         # but Isaac should remain when the skip_deletes flag is True
         ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), skip_deletes=True)
 
-        self.assertEqual(2, Employee.objects.count())
         self.assertEqual(["Scott", "Isaac"], [x.name for x in Employee.objects.all().order_by('id')])
+
+        new_e1 = Employee.objects.get(id=e1.id)
+        self.assertEqual(41, new_e1.age)
+
+        self.assertEqual(2, Employee.objects.count())
+
+        self.assertEqual(1, ret["stats"]["updated"])
+        self.assertEqual(0, ret["stats"]["created"])
+        self.assertEqual(0, ret["stats"]["deleted"])
 
     def test_skip_creates(self):
         c1 = Company.objects.create(name="My Company LLC")
@@ -137,15 +145,20 @@ class BulkSyncTests(TestCase):
         self.assertEqual(2, Employee.objects.count())
         self.assertEqual(["Scott", "Isaac"], [x.name for x in Employee.objects.all().order_by('id')])
 
+        self.assertEqual(0, ret["stats"]["updated"])
+        self.assertEqual(0, ret["stats"]["created"])
+        self.assertEqual(0, ret["stats"]["deleted"])
+
     def test_skip_updates(self):
         c1 = Company.objects.create(name="My Company LLC")
 
         e1 = Employee.objects.create(name="Scott", age=40, company=c1)
         e2 = Employee.objects.create(name="Isaac", age=9, company=c1)
 
-        # create a new employee that will be ignored
+        # update employee that will be ignored, create a new one
         new_objs = [
-            Employee(name="Scott", age=100, company=c1)
+            Employee(name="Scott", age=100, company=c1),
+            Employee(name="Alice", age=36, company=c1)
         ]
 
         ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), skip_updates=True)
@@ -153,6 +166,15 @@ class BulkSyncTests(TestCase):
         # the age should not have been updated
         new_e1 = Employee.objects.get(id=e1.id)
         self.assertEqual(40, new_e1.age)
+
+        # Isaac is "stale" object - was deleted, Alice was created
+        self.assertEqual(2, Employee.objects.count())
+        self.assertEqual(["Scott", "Alice"], [x.name for x in Employee.objects.all().order_by('id')])
+
+
+        self.assertEqual(0, ret["stats"]["updated"])
+        self.assertEqual(1, ret["stats"]["created"])
+        self.assertEqual(1, ret["stats"]["deleted"])
 
 
 
