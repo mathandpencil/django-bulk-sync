@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db import IntegrityError
 from django.db.models import Q
 from django.test import TestCase
 
@@ -68,12 +69,26 @@ class BulkSyncTests(TestCase):
         self.assertEqual(50, new_e5.age)
         self.assertEqual(c1, new_e5.company)
 
-    def test_pk_set_but_keyfield_changes_ignores_pk(self):
+    def test_provided_pk_is_retained_but_raises_if_mismatch_with_keyfield(self):
         c1 = Company.objects.create(name="Foo Products, Ltd.")
         e1 = Employee.objects.create(name="Scott", age=40, company=c1)
         new_objs = [Employee(id=e1.id, name="Notscott", age=41, company=c1)]
 
+        with self.assertRaises(IntegrityError):
+            # Crashes because e1.id already exists in database, even though 'name' doesnt match so it tries to INSERT.
+            ret = bulk_sync(new_models=new_objs, filters=Q(company_id=c1.id), key_fields=("name",))
+
+        unique_pk = Employee.objects.values_list('id', flat=True).order_by('-id').first() + 1
+        new_objs = [Employee(id=unique_pk, name="Notscott", age=41, company=c1)]
         ret = bulk_sync(new_models=new_objs, filters=Q(company_id=c1.id), key_fields=("name",))
+
+        self.assertEqual(0, ret["stats"]["updated"])
+        self.assertEqual(1, ret["stats"]["created"]) # Added 'Notscott'
+        self.assertEqual(1, ret["stats"]["deleted"]) # Deleted 'Scott'
+
+        # Make sure we retained the PK
+        self.assertEqual(Employee.objects.filter(id=unique_pk).count(), 1)
+
 
     def test_fields_parameter(self):
         c1 = Company.objects.create(name="Foo Products, Ltd.")
