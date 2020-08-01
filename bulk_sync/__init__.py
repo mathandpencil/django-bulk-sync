@@ -1,11 +1,16 @@
 from collections import OrderedDict
 import logging
 from django.db import transaction
+from django.core.exceptions import FieldDoesNotExist
 
 logger = logging.getLogger(__name__)
 
 
-def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None, skip_creates=False, skip_updates=False, skip_deletes=False):
+def bulk_sync(
+        new_models, key_fields, filters,
+        batch_size=None, fields=None, exclude_fields=None,
+        skip_creates=False, skip_updates=False, skip_deletes=False
+):
     """ Combine bulk create, update, and delete.  Make the DB match a set of in-memory objects.
 
     `new_models`: Django ORM objects that are the desired state.  They may or may not have `id` set.
@@ -14,7 +19,9 @@ def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None, ski
     `filters`: Q() filters specifying the subset of the database to work in.  Use `None` or `[]` if you want to sync against the entire table.
     `batch_size`: passes through to Django `bulk_create.batch_size` and `bulk_update.batch_size`, and controls
             how many objects are created/updated per SQL query.
-    `fields`: (optional) list of fields to update. If not set, will sync all fields that are editable and not auto-created.
+    `fields`: (optional) list of fields to update. If not set, will sync all fields that are editable and not
+            auto-created.
+    `exclude_fields`: (optional) list of fields to exclude from updates.
     `skip_creates`: If truthy, will not perform any object creations needed to fully sync. Defaults to not skip.
     `skip_updates`: If truthy, will not perform any object updates needed to fully sync. Defaults to not skip. 
     `skip_deletes`: If truthy, will not perform any object deletions needed to fully sync. Defaults to not skip. 
@@ -26,6 +33,19 @@ def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None, ski
         fields = [field.name
                   for field in db_class._meta.fields
                   if not field.primary_key and not field.auto_created and field.editable]
+
+    if exclude_fields is not None:
+        model_fields = set(field.name for field in db_class._meta.fields)
+        fields_to_update = set(fields)
+        fields_to_exclude = set(exclude_fields)
+
+        # Check that we're not attempting to exclude non-existant fields
+        if not fields_to_exclude <= model_fields:
+            raise FieldDoesNotExist(
+                f'model "{db_class.__name__}" has no field(s) {fields_to_exclude - model_fields}'
+            )
+
+        fields = list(fields_to_update - fields_to_exclude)
 
     with transaction.atomic():
         objs = db_class.objects.all()
