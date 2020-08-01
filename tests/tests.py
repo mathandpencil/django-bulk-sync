@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import IntegrityError
+from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Q
 from django.test import TestCase
 
@@ -104,6 +105,39 @@ class BulkSyncTests(TestCase):
         ]
 
         ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), fields=['age'])
+
+        new_e1 = Employee.objects.get(id=e1.id)
+        self.assertEqual("Scott", new_e1.name)
+        self.assertEqual(41, new_e1.age)
+        self.assertEqual(c1, new_e1.company)
+
+        new_e2 = Employee.objects.get(id=e2.id)
+        self.assertEqual("Isaac", new_e2.name)
+        self.assertEqual(9, new_e2.age)
+        self.assertEqual(c2, new_e2.company)
+
+        self.assertEqual(2, ret["stats"]["updated"])
+        self.assertEqual(0, ret["stats"]["created"])
+        self.assertEqual(0, ret["stats"]["deleted"])
+
+    def test_exclude_fields_parameter(self):
+        c1 = Company.objects.create(name="Foo Products, Ltd.")
+        c2 = Company.objects.create(name="Bar Microcontrollers, Inc.")
+
+        e1 = Employee.objects.create(name="Scott", age=40, company=c1)
+        e2 = Employee.objects.create(name="Isaac", age=9, company=c2)
+
+        # We should update Scott's age, and not touch company.
+        new_objs = [
+            Employee(name="Scott", age=41, company=c1),
+            Employee(name="Isaac", age=9, company=c1),
+        ]
+
+        with self.assertRaises(FieldDoesNotExist):
+            # Crashes because we attempted to exclude a field that does not exist
+            bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), exclude_fields=['missing_field'])
+
+        ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), exclude_fields=['company'])
 
         new_e1 = Employee.objects.get(id=e1.id)
         self.assertEqual("Scott", new_e1.name)
