@@ -1,5 +1,6 @@
 from collections import OrderedDict
 import logging
+
 from django.db import transaction
 from django.core.exceptions import FieldDoesNotExist
 
@@ -16,7 +17,8 @@ def bulk_sync(
     `new_models`: Django ORM objects that are the desired state.  They may or may not have `id` set.
     `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows.  If a foreign key
             is being used as a key field, be sure to pass the `fieldname_id` rather than the `fieldname`.
-    `filters`: Q() filters specifying the subset of the database to work in.  Use `None` or `[]` if you want to sync against the entire table.
+    `filters`: Q() filters specifying the subset of the database to work in. Use `None` or `[]` if you want to sync
+            against the entire table.
     `batch_size`: passes through to Django `bulk_create.batch_size` and `bulk_update.batch_size`, and controls
             how many objects are created/updated per SQL query.
     `fields`: (optional) list of fields to update. If not set, will sync all fields that are editable and not
@@ -71,7 +73,7 @@ def bulk_sync(
 
         if not skip_creates:
             db_class.objects.bulk_create(new_objs, batch_size=batch_size)
-            
+
         if not skip_updates:
             db_class.objects.bulk_update(existing_objs, fields=fields, batch_size=batch_size)
 
@@ -82,8 +84,8 @@ def bulk_sync(
         assert len(existing_objs) == len(new_models) - len(new_objs)
 
         stats = {
-            "created": 0 if skip_creates else len(new_objs), 
-            "updated": 0 if skip_updates else (len(new_models) - len(new_objs)), 
+            "created": 0 if skip_creates else len(new_objs),
+            "updated": 0 if skip_updates else (len(new_models) - len(new_objs)),
             "deleted": 0 if skip_deletes else len(obj_dict)
         }
 

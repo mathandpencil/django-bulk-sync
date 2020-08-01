@@ -84,12 +84,11 @@ class BulkSyncTests(TestCase):
         ret = bulk_sync(new_models=new_objs, filters=Q(company_id=c1.id), key_fields=("name",))
 
         self.assertEqual(0, ret["stats"]["updated"])
-        self.assertEqual(1, ret["stats"]["created"]) # Added 'Notscott'
-        self.assertEqual(1, ret["stats"]["deleted"]) # Deleted 'Scott'
+        self.assertEqual(1, ret["stats"]["created"])  # Added 'Notscott'
+        self.assertEqual(1, ret["stats"]["deleted"])  # Deleted 'Scott'
 
         # Make sure we retained the PK
         self.assertEqual(Employee.objects.filter(id=unique_pk).count(), 1)
-
 
     def test_fields_parameter(self):
         c1 = Company.objects.create(name="Foo Products, Ltd.")
@@ -220,11 +219,9 @@ class BulkSyncTests(TestCase):
         self.assertEqual(2, Employee.objects.count())
         self.assertEqual(["Scott", "Alice"], [x.name for x in Employee.objects.all().order_by('id')])
 
-
         self.assertEqual(0, ret["stats"]["updated"])
         self.assertEqual(1, ret["stats"]["created"])
         self.assertEqual(1, ret["stats"]["deleted"])
-
 
 
 class BulkCompareTests(TestCase):
