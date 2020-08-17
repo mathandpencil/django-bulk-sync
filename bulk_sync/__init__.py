@@ -5,6 +5,11 @@ from django.db import transaction, router
 logger = logging.getLogger(__name__)
 
 
+def _get_key(obj, key_fields):
+    """Build key for object."""
+    return tuple(getattr(obj, k) for k in key_fields)
+
+
 def bulk_sync(
     new_models,
     key_fields,
@@ -40,20 +45,16 @@ def bulk_sync(
 
     using = router.db_for_write(db_class)
     with transaction.atomic(using=using):
-        objs = db_class.objects.all()
+        objs = db_class.objects.select_for_update().all()
         if filters:
             objs = objs.filter(filters)
-        objs = objs.only("pk", *key_fields).select_for_update()
 
-        def get_key(obj):
-            return tuple(getattr(obj, k) for k in key_fields)
-
-        obj_dict = {get_key(obj): obj for obj in objs}
+        obj_dict = {_get_key(obj, key_fields): obj for obj in objs}
 
         new_objs = []
         existing_objs = []
         for new_obj in new_models:
-            old_obj = obj_dict.pop(get_key(new_obj), None)
+            old_obj = obj_dict.pop(_get_key(new_obj, key_fields), None)
             if old_obj is None:
                 # This is a new object, so create it.
                 new_objs.append(new_obj)
@@ -105,10 +106,7 @@ def bulk_compare(old_models, new_models, key_fields, ignore_fields=None):
 
     """
 
-    def get_key(obj):
-        return tuple(getattr(obj, k) for k in key_fields)
-
-    old_obj_dict = OrderedDict((get_key(obj), obj) for obj in old_models)
+    old_obj_dict = OrderedDict((_get_key(obj, key_fields), obj) for obj in old_models)
 
     new_objs = []
     change_details = {}
@@ -116,7 +114,7 @@ def bulk_compare(old_models, new_models, key_fields, ignore_fields=None):
     unchanged_objs = []
 
     for new_obj in new_models:
-        old_obj = old_obj_dict.pop(get_key(new_obj), None)
+        old_obj = old_obj_dict.pop(_get_key(new_obj, key_fields), None)
         if old_obj is None:
             # This is a new object, so create it.
             new_objs.append(new_obj)
