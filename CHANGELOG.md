@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+-   Added exclude_fields argument. Issue #15, pull request #16 from [@VKFisher](https://github.com/VKFisher).
+
 ## [3.0.1] - 2020-08-05
 
 ### Updated

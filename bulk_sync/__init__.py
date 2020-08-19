@@ -29,7 +29,8 @@ def bulk_sync(
             how many objects are created/updated per SQL query.
     `fields`: (optional) list of fields to update. If not set, will sync all fields that are editable and not
             auto-created.
-    `exclude_fields`: (optional) list of fields to exclude from updates.
+    `exclude_fields`: (optional) list of fields to exclude from updates. Subtracts from the passed-in `fields` or
+            default-calculated `fields` (see `fields` documentation above.)
     `skip_creates`: If truthy, will not perform any object creations needed to fully sync. Defaults to not skip.
     `skip_updates`: If truthy, will not perform any object updates needed to fully sync. Defaults to not skip.
     `skip_deletes`: If truthy, will not perform any object deletions needed to fully sync. Defaults to not skip.

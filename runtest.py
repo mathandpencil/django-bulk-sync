@@ -4,7 +4,7 @@ import sys
 import django
 
 if __name__ == "__main__":
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'tests.test_settings'
+    os.environ["DJANGO_SETTINGS_MODULE"] = "tests.test_settings"
 
     from django.conf import settings
     from django.test.utils import get_runner
@@ -15,4 +15,3 @@ if __name__ == "__main__":
     test_runner = TestRunner()
     failures = test_runner.run_tests(["tests"])
     sys.exit(bool(failures))
-    
