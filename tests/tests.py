@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import IntegrityError
+from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Q
 from django.test import TestCase
 
@@ -78,17 +79,16 @@ class BulkSyncTests(TestCase):
             # Crashes because e1.id already exists in database, even though 'name' doesnt match so it tries to INSERT.
             ret = bulk_sync(new_models=new_objs, filters=Q(company_id=c1.id), key_fields=("name",))
 
-        unique_pk = Employee.objects.values_list('id', flat=True).order_by('-id').first() + 1
+        unique_pk = Employee.objects.values_list("id", flat=True).order_by("-id").first() + 1
         new_objs = [Employee(id=unique_pk, name="Notscott", age=41, company=c1)]
         ret = bulk_sync(new_models=new_objs, filters=Q(company_id=c1.id), key_fields=("name",))
 
         self.assertEqual(0, ret["stats"]["updated"])
-        self.assertEqual(1, ret["stats"]["created"]) # Added 'Notscott'
-        self.assertEqual(1, ret["stats"]["deleted"]) # Deleted 'Scott'
+        self.assertEqual(1, ret["stats"]["created"])  # Added 'Notscott'
+        self.assertEqual(1, ret["stats"]["deleted"])  # Deleted 'Scott'
 
         # Make sure we retained the PK
         self.assertEqual(Employee.objects.filter(id=unique_pk).count(), 1)
-
 
     def test_fields_parameter(self):
         c1 = Company.objects.create(name="Foo Products, Ltd.")
@@ -98,12 +98,39 @@ class BulkSyncTests(TestCase):
         e2 = Employee.objects.create(name="Isaac", age=9, company=c2)
 
         # We should update Scott's age, and not touch company.
-        new_objs = [
-            Employee(name="Scott", age=41, company=c1),
-            Employee(name="Isaac", age=9, company=c1),
-        ]
+        new_objs = [Employee(name="Scott", age=41, company=c1), Employee(name="Isaac", age=9, company=c1)]
 
-        ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), fields=['age'])
+        ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), fields=["age"])
+
+        new_e1 = Employee.objects.get(id=e1.id)
+        self.assertEqual("Scott", new_e1.name)
+        self.assertEqual(41, new_e1.age)
+        self.assertEqual(c1, new_e1.company)
+
+        new_e2 = Employee.objects.get(id=e2.id)
+        self.assertEqual("Isaac", new_e2.name)
+        self.assertEqual(9, new_e2.age)
+        self.assertEqual(c2, new_e2.company)
+
+        self.assertEqual(2, ret["stats"]["updated"])
+        self.assertEqual(0, ret["stats"]["created"])
+        self.assertEqual(0, ret["stats"]["deleted"])
+
+    def test_exclude_fields_parameter(self):
+        c1 = Company.objects.create(name="Foo Products, Ltd.")
+        c2 = Company.objects.create(name="Bar Microcontrollers, Inc.")
+
+        e1 = Employee.objects.create(name="Scott", age=40, company=c1)
+        e2 = Employee.objects.create(name="Isaac", age=9, company=c2)
+
+        # We should update Scott's age, and not touch company.
+        new_objs = [Employee(name="Scott", age=41, company=c1), Employee(name="Isaac", age=9, company=c1)]
+
+        with self.assertRaises(FieldDoesNotExist):
+            # Crashes because we attempted to exclude a field that does not exist
+            bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), exclude_fields=["missing_field"])
+
+        ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), exclude_fields=["company"])
 
         new_e1 = Employee.objects.get(id=e1.id)
         self.assertEqual("Scott", new_e1.name)
@@ -126,14 +153,12 @@ class BulkSyncTests(TestCase):
         e2 = Employee.objects.create(name="Isaac", age=9, company=c1)
 
         # update Scott - this makes Isaac is the "stale object" that would be deleted if skip_deletes were False
-        new_objs = [
-            Employee(name="Scott", age=41, company=c1),
-        ]
+        new_objs = [Employee(name="Scott", age=41, company=c1)]
 
         # but Isaac should remain when the skip_deletes flag is True
         ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), skip_deletes=True)
 
-        self.assertEqual(["Scott", "Isaac"], [x.name for x in Employee.objects.all().order_by('id')])
+        self.assertEqual(["Scott", "Isaac"], [x.name for x in Employee.objects.all().order_by("id")])
 
         new_e1 = Employee.objects.get(id=e1.id)
         self.assertEqual(41, new_e1.age)
@@ -151,14 +176,12 @@ class BulkSyncTests(TestCase):
         e2 = Employee.objects.create(name="Isaac", age=9, company=c1)
 
         # create a new employee that will be ignored
-        new_objs = [
-            Employee(name="John", age=52, company=c1)
-        ]
+        new_objs = [Employee(name="John", age=52, company=c1)]
 
         ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), skip_creates=True, skip_deletes=True)
 
         self.assertEqual(2, Employee.objects.count())
-        self.assertEqual(["Scott", "Isaac"], [x.name for x in Employee.objects.all().order_by('id')])
+        self.assertEqual(["Scott", "Isaac"], [x.name for x in Employee.objects.all().order_by("id")])
 
         self.assertEqual(0, ret["stats"]["updated"])
         self.assertEqual(0, ret["stats"]["created"])
@@ -171,10 +194,7 @@ class BulkSyncTests(TestCase):
         e2 = Employee.objects.create(name="Isaac", age=9, company=c1)
 
         # update employee that will be ignored, create a new one
-        new_objs = [
-            Employee(name="Scott", age=100, company=c1),
-            Employee(name="Alice", age=36, company=c1)
-        ]
+        new_objs = [Employee(name="Scott", age=100, company=c1), Employee(name="Alice", age=36, company=c1)]
 
         ret = bulk_sync(new_models=new_objs, filters=None, key_fields=("name",), skip_updates=True)
 
@@ -184,13 +204,11 @@ class BulkSyncTests(TestCase):
 
         # Isaac is "stale" object - was deleted, Alice was created
         self.assertEqual(2, Employee.objects.count())
-        self.assertEqual(["Scott", "Alice"], [x.name for x in Employee.objects.all().order_by('id')])
-
+        self.assertEqual(["Scott", "Alice"], [x.name for x in Employee.objects.all().order_by("id")])
 
         self.assertEqual(0, ret["stats"]["updated"])
         self.assertEqual(1, ret["stats"]["created"])
         self.assertEqual(1, ret["stats"]["deleted"])
-
 
 
 class BulkCompareTests(TestCase):
@@ -261,5 +279,5 @@ class BulkCompareTests(TestCase):
         self.assertEqual([new_objs[2], new_objs[3]], ret["added"])
         self.assertEqual([e3], list(ret["removed"]))
         self.assertEqual([new_objs[0]], ret["updated"])
-        self.assertEqual({new_objs[0]: {'age': (40, 41)}}, ret["updated_details"])
+        self.assertEqual({new_objs[0]: {"age": (40, 41)}}, ret["updated_details"])
         self.assertEqual([new_objs[1]], ret["unchanged"])
