@@ -4,6 +4,7 @@
 
 ### Added
 
+-   Added support for manually specifying model to act on if new_models is empty. #11.
 -   Added exclude_fields argument. Issue #15, pull request #16 from [@VKFisher](https://github.com/VKFisher).
 
 ## [3.0.1] - 2020-08-05

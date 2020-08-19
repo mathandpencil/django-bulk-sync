@@ -79,6 +79,7 @@ Combine bulk create, update, and delete. Make the DB match a set of in-memory ob
 -   `skip_creates`: (optional) If truthy, will not perform any object creations needed to fully sync. Defaults to not skip.
 -   `skip_updates`: (optional) If truthy, will not perform any object updates needed to fully sync. Defaults to not skip.
 -   `skip_deletes`: (optional) If truthy, will not perform any object deletions needed to fully sync. Defaults to not skip.
+-   `db_class`: (optional) Model class to operate on. If new_models always contains at least one object, this can be set automatically so is optional.
 
 -   Returns a dict:
     ```

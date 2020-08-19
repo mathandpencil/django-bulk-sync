@@ -210,6 +210,15 @@ class BulkSyncTests(TestCase):
         self.assertEqual(1, ret["stats"]["created"])
         self.assertEqual(1, ret["stats"]["deleted"])
 
+    def test_empty_new_models_class_detection_works(self):
+        c1 = Company.objects.create(name="My Company LLC")
+
+        with self.assertRaises(RuntimeError):
+            ret = bulk_sync(new_models=[], filters=None, key_fields=("name",))
+
+        ret = bulk_sync(new_models=[], filters=None, key_fields=("name",), db_class=Employee)
+        ret = bulk_sync(new_models=Employee.objects.none(), filters=None, key_fields=("name",))
+
 
 class BulkCompareTests(TestCase):
     """ Test `bulk_compare` method """

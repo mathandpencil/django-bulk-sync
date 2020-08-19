@@ -17,6 +17,7 @@ def bulk_sync(
     skip_creates=False,
     skip_updates=False,
     skip_deletes=False,
+    db_class=None,
 ):
     """ Combine bulk create, update, and delete.  Make the DB match a set of in-memory objects.
 
@@ -34,8 +35,23 @@ def bulk_sync(
     `skip_creates`: If truthy, will not perform any object creations needed to fully sync. Defaults to not skip.
     `skip_updates`: If truthy, will not perform any object updates needed to fully sync. Defaults to not skip.
     `skip_deletes`: If truthy, will not perform any object deletions needed to fully sync. Defaults to not skip.
+    `db_class`: (optional) Model class to operate on. If new_models always contains at least one object, this can
+            be set automatically so is optional.
     """
-    db_class = new_models[0].__class__
+
+    if db_class is None:
+        try:
+            db_class = new_models[0].__class__
+        except IndexError:
+            try:
+                db_class = new_models.model
+            except AttributeError:
+                db_class = None
+
+    if db_class is None:
+        raise RuntimeError(
+            "Unable to identify model to sync. Need to provide at least one object in `new_models`, provide `db_class`, or set `new_models` with a queryset like `db_class.objects.none()`."
+        )
 
     if fields is None:
         # Get a list of fields that aren't PKs and aren't editable (e.g. auto_add_now) for bulk_update
