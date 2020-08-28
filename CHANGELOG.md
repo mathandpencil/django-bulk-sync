@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [3.1.0] - 2020-08-28
+
 ### Added
 
 -   Added support for manually specifying model to act on if new_models is empty. #11.
@@ -38,7 +40,8 @@
 
 -   Removed support for Django versions before 2.2. Please use 1.x series for Django < 2.2.
 
-[unreleased]: https://github.com/mathandpencil/django-bulk-sync/compare/v3.0.0..HEAD
+[unreleased]: https://github.com/mathandpencil/django-bulk-sync/compare/v3.1.0..HEAD
+[3.1.0]: https://github.com/mathandpencil/django-bulk-sync/compare/v3.0.1..v3.1.0
 [3.0.1]: https://github.com/mathandpencil/django-bulk-sync/compare/v3.0.0..v3.0.1
 [3.0.0]: https://github.com/mathandpencil/django-bulk-sync/compare/v2.1.0..v3.0.0
 [2.1.0]: https://github.com/mathandpencil/django-bulk-sync/compare/v2.0.0..v2.1.0
