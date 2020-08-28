@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [3.1.0] - 2020-08-28
+
 ### Added
 
 -   Added support for manually specifying model to act on if new_models is empty. #11.
