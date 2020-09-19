@@ -6,6 +6,8 @@ Combine bulk create, update, and delete into a single call.
 
 It manages all necessary creates, updates, and deletes with as few database calls as possible to maximize performance.
 
+It can use either database PKs or `key_fields` to match up objects with existing records.
+
 ## Installation
 
 The package is available on pip as [django-bulk-sync][django-bulk-sync]. Run:
@@ -43,10 +45,12 @@ for line in company_import_file:
 	new_models.append(e)
 
 # `filters` controls the subset of objects considered when deciding to
-# update or delete.
+# update or delete.  Here we sync only company 501 employees.
 filters = Q(company_id=501)
+
 # `key_fields` matches an existing object if all `key_fields` are equal.
 key_fields = ('name', )
+
 ret = bulk_sync(
         new_models=new_models,
         filters=filters,
@@ -62,28 +66,31 @@ Under the hood, it will atomically call `bulk_create`, `bulk_update`, and a sing
 
 ## Argument Reference
 
-`def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None):`
+`def bulk_sync(new_models, key_fields, filters, batch_size=None, fields=None, skip_creates=False, skip_updates=False, skip_deletes=False):`
 Combine bulk create, update, and delete. Make the DB match a set of in-memory objects.
 
 -   `new_models`: An iterable of Django ORM `Model` objects that you want stored in the database. They may or may not have `id` set, but you should not have already called `save()` on them.
--   `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows. If a foreign key is being used as a key field, be sure to pass the `fieldname_id` rather than the `fieldname`.
+-   `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows. If a foreign key is being used as a key field, be sure to pass the `fieldname_id` rather than the `fieldname`. Use `['pk']` if you know the PKs already and want to use them to identify and match up `new_models` with existing database rows.
 -   `filters`: Q() filters specifying the subset of the database to work in. Use `None` or `[]` if you want to sync against the entire table.
--   `batch_size`: passes through to Django `bulk_create.batch_size` and `bulk_update.batch_size`, and controls how many objects are created/updated per SQL query.
+-   `batch_size`: (optional) passes through to Django `bulk_create.batch_size` and `bulk_update.batch_size`, and controls how many objects are created/updated per SQL query.
 -   `fields`: (optional) List of fields to update. If not set, will sync all fields that are editable and not auto-created.
+-   `exclude_fields`: (optional) list of fields to exclude from updates. Subtracts from the passed-in `fields` or default-calculated `fields` (see `fields` documentation above).
 -   `exclude_fields`: (optional) List of fields to exclude from updates.
--   `skip_creates`: If truthy, will not perform any object creations needed to fully sync. Defaults to not skip.
--   `skip_updates`: If truthy, will not perform any object updates needed to fully sync. Defaults to not skip. 
--   `skip_deletes`: If truthy, will not perform any object deletions needed to fully sync. Defaults to not skip. 
+-   `skip_creates`: (optional) If truthy, will not perform any object creations needed to fully sync. Defaults to not skip.
+-   `skip_updates`: (optional) If truthy, will not perform any object updates needed to fully sync. Defaults to not skip.
+-   `skip_deletes`: (optional) If truthy, will not perform any object deletions needed to fully sync. Defaults to not skip.
+-   `db_class`: (optional) Model class to operate on. If new_models always contains at least one object, this can be set automatically so is optional.
 
 -   Returns a dict:
-
+    ```
     {
     'stats': {
-    "created": number of `new_models` not found in database and so created,
-    "updated": number of `new_models` that were found in database as matched by `key_fields`,
-    "deleted": number of deleted objects - rows in database that matched `filters` but were not present in `new_models`.
+        "created": number of `new_models` not found in database and so created,
+        "updated": number of `new_models` that were found in database as matched by `key_fields`,
+        "deleted": number of deleted objects - rows in database that matched `filters` but were not present in `new_models`.
+        }
     }
-    }
+    ```
 
 `def bulk_compare(old_models, new_models, key_fields, ignore_fields=None):`
 Compare two sets of models by `key_fields`.
@@ -93,7 +100,16 @@ Compare two sets of models by `key_fields`.
 -   `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows. If a foreign key
     is being used as a key field, be sure to pass the `fieldname_id` rather than the `fieldname`.
 -   `ignore_fields`: (optional) If set, provide field names that should not be considered when comparing objects.
--   Returns dict of: `{ 'added': list of all added objects. 'unchanged': list of all unchanged objects. 'updated': list of all updated objects. 'updated_details': dict of {obj: {field_name: (old_value, new_value)}} for all changed fields in each updated object. 'removed': list of all removed objects. }`
+-   Returns dict:
+    ```
+        {
+            'added': list of all added objects.
+            'unchanged': list of all unchanged objects.
+            'updated': list of all updated objects.
+            'updated_details': dict of {obj: {field_name: (old_value, new_value)}} for all changed fields in each updated object.
+            'removed': list of all removed objects.
+        }
+    ```
 
 ## Frameworks Supported
 
