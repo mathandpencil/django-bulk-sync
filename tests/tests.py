@@ -219,6 +219,28 @@ class BulkSyncTests(TestCase):
         ret = bulk_sync(new_models=[], filters=None, key_fields=("name",), db_class=Employee)
         ret = bulk_sync(new_models=Employee.objects.none(), filters=None, key_fields=("name",))
 
+    def test_new_objs_with_unprepped_field_values_are_processed_correctly(self):
+        c1 = Company.objects.create(name="Foo Products, Ltd.")
+        c2 = Company.objects.create(name="Bar Microcontrollers, Inc.")
+        e1 = Employee.objects.create(name="Scott", age=40, company=c1)
+
+        new_objs = [Employee(name="Scott", age="40", company=c2)]
+
+        ret = bulk_sync(
+            new_models=new_objs,
+            filters=None,
+            key_fields=("name", "age"),
+        )
+
+        # we should should update e1's company to c2
+        self.assertEqual(1, ret["stats"]["updated"])
+        self.assertEqual(c2, Employee.objects.get(pk=e1.pk).company)
+
+        # we should not create or delete anything
+        self.assertEqual(0, ret["stats"]["created"])
+        self.assertEqual(0, ret["stats"]["deleted"])
+        self.assertEqual(1, Employee.objects.count())
+
 
 class BulkCompareTests(TestCase):
     """ Test `bulk_compare` method """
