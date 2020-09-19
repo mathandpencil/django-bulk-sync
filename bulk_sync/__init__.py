@@ -1,5 +1,6 @@
 from collections import OrderedDict
 import logging
+import functools
 
 from django.db import transaction, router
 from django.core.exceptions import FieldDoesNotExist
@@ -79,15 +80,23 @@ def bulk_sync(
             objs = objs.filter(filters)
         objs = objs.only("pk", *key_fields).select_for_update()
 
-        def get_key(obj):
-            return tuple(getattr(obj, k) for k in key_fields)
+        prep_functions = {
+            field.name: functools.partial(field.to_python) if hasattr(field, 'to_python') else lambda x: x
+            for field in (db_class._meta.get_field(k) for k in key_fields)
+        }
+
+        def get_key(obj, prep_values=False):
+            return tuple(
+                prep_functions[k](getattr(obj, k)) if prep_values else getattr(obj, k)
+                for k in key_fields
+            )
 
         obj_dict = {get_key(obj): obj for obj in objs}
 
         new_objs = []
         existing_objs = []
         for new_obj in new_models:
-            old_obj = obj_dict.pop(get_key(new_obj), None)
+            old_obj = obj_dict.pop(get_key(new_obj, prep_values=True), None)
             if old_obj is None:
                 # This is a new object, so create it.
                 new_objs.append(new_obj)
