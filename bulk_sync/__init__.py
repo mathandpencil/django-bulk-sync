@@ -51,7 +51,8 @@ def bulk_sync(
 
     if db_class is None:
         raise RuntimeError(
-            "Unable to identify model to sync. Need to provide at least one object in `new_models`, provide `db_class`, or set `new_models` with a queryset like `db_class.objects.none()`."
+            "Unable to identify model to sync. Need to provide at least one object in `new_models`, provide "
+            "`db_class`, or set `new_models` with a queryset like `db_class.objects.none()`."
         )
 
     if fields is None:
