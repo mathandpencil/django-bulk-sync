@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import logging
 import functools
 
@@ -81,10 +81,12 @@ def bulk_sync(
             objs = objs.filter(filters)
         objs = objs.only("pk", *key_fields).select_for_update()
 
-        prep_functions = {
-            field.name: functools.partial(field.to_python) if hasattr(field, 'to_python') else lambda x: x
+        prep_functions = defaultdict(lambda: lambda x: x)
+        prep_functions.update({
+            field.name: functools.partial(field.to_python)
             for field in (db_class._meta.get_field(k) for k in key_fields)
-        }
+            if hasattr(field, 'to_python')
+        })
 
         def get_key(obj, prep_values=False):
             return tuple(
