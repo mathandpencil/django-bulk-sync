@@ -96,7 +96,7 @@ def bulk_sync(
                 existing_objs.append(new_obj)
 
         if not skip_creates:
-            db_class.objects.bulk_create(new_objs, batch_size=batch_size)
+            bulk_create_multitable(db_class, new_objs, batch_size=batch_size)
 
         if not skip_updates:
             db_class.objects.bulk_update(existing_objs, fields=fields, batch_size=batch_size)
@@ -120,6 +120,18 @@ def bulk_sync(
         )
 
     return {"stats": stats}
+
+
+def bulk_create_multitable(db_class, new_objs, batch_size):
+    try:
+        db_class.objects.bulk_create(new_objs, batch_size=batch_size)
+    except ValueError as e:
+        # if new_objs class is a multi-table inherited model, itrate save.
+        if str(e) == "Can't bulk create a multi-table inherited model":
+            for obj in new_objs:
+                obj.save()
+        else:
+            raise e
 
 
 def bulk_compare(old_models, new_models, key_fields, ignore_fields=None):
