@@ -1,5 +1,6 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import logging
+import functools
 
 from django.db import transaction, router
 from django.core.exceptions import FieldDoesNotExist
@@ -50,7 +51,8 @@ def bulk_sync(
 
     if db_class is None:
         raise RuntimeError(
-            "Unable to identify model to sync. Need to provide at least one object in `new_models`, provide `db_class`, or set `new_models` with a queryset like `db_class.objects.none()`."
+            "Unable to identify model to sync. Need to provide at least one object in `new_models`, provide "
+            "`db_class`, or set `new_models` with a queryset like `db_class.objects.none()`."
         )
 
     if fields is None:
@@ -79,15 +81,25 @@ def bulk_sync(
             objs = objs.filter(filters)
         objs = objs.only("pk", *key_fields).select_for_update()
 
-        def get_key(obj):
-            return tuple(getattr(obj, k) for k in key_fields)
+        prep_functions = defaultdict(lambda: lambda x: x)
+        prep_functions.update({
+            field.name: functools.partial(field.to_python)
+            for field in (db_class._meta.get_field(k) for k in key_fields)
+            if hasattr(field, 'to_python')
+        })
+
+        def get_key(obj, prep_values=False):
+            return tuple(
+                prep_functions[k](getattr(obj, k)) if prep_values else getattr(obj, k)
+                for k in key_fields
+            )
 
         obj_dict = {get_key(obj): obj for obj in objs}
 
         new_objs = []
         existing_objs = []
         for new_obj in new_models:
-            old_obj = obj_dict.pop(get_key(new_obj), None)
+            old_obj = obj_dict.pop(get_key(new_obj, prep_values=True), None)
             if old_obj is None:
                 # This is a new object, so create it.
                 new_objs.append(new_obj)
