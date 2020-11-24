@@ -104,7 +104,7 @@ def bulk_sync(
                 # This is a new object, so create it.
                 new_objs.append(new_obj)
             else:
-                new_obj.id = old_obj.id
+                new_obj.pk = old_obj.pk
                 existing_objs.append(new_obj)
 
         if not skip_creates:
@@ -167,7 +167,7 @@ def bulk_compare(old_models, new_models, key_fields, ignore_fields=None):
             # This is a new object, so create it.
             new_objs.append(new_obj)
         else:
-            new_obj.id = old_obj.id
+            new_obj.pk = old_obj.pk
 
             cmp_result = compare_objs(old_obj, new_obj, ignore_fields)
             if cmp_result:
