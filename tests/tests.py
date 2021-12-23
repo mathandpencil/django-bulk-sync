@@ -6,7 +6,14 @@ from django.test import TestCase
 
 from bulk_sync import bulk_compare
 from bulk_sync import bulk_sync
-from .models import Company, Employee, EmployeeDifferentPk
+from .models import (
+    Company,
+    Employee,
+    EmployeeDifferentPk,
+    EmployeeOffice,
+    EmployeeWithOffice,
+    Office
+)
 
 
 class BulkSyncTests(TestCase):
@@ -295,6 +302,46 @@ class BulkSyncTests(TestCase):
         self.assertEqual(0, ret["stats"]["created"])
         self.assertEqual(0, ret["stats"]["deleted"])
         self.assertEqual(1, Employee.objects.count())
+
+    def test_select_for_update_of_pk(self):
+        self.c1 = Company.objects.create(name="Foo Products, Ltd.")
+        self.c2 = Company.objects.create(name="Bar Microcontrollers, Inc.")
+
+        self.e1 = EmployeeWithOffice.objects.create(name="Scott", age=40, company=self.c1)
+        self.e2 = EmployeeWithOffice.objects.create(name="Isaac", age=9, company=self.c1)
+        self.e3 = EmployeeWithOffice.objects.create(name="Zoe", age=9, company=self.c1)
+        self.e4 = EmployeeWithOffice.objects.create(name="Bob", age=25, company=self.c2)
+        self.e5 = EmployeeWithOffice.objects.create(name="Newguy", age=55, company=self.c2)
+
+        self.o1 = Office.objects.create(id="office1")
+        self.o2 = Office.objects.create(id="office2")
+        self.o3 = Office.objects.create(id="office3")
+
+        self.eo1 = EmployeeOffice.objects.create(employee=self.e1, office=self.o1)
+        self.eo2 = EmployeeOffice.objects.create(employee=self.e2, office=self.o1)
+        self.eo3 = EmployeeOffice.objects.create(employee=self.e3, office=self.o2)
+        self.eo4 = EmployeeOffice.objects.create(employee=self.e4, office=self.o2)
+
+
+        e5 = self.e5
+        o3 = self.o3
+        new_objs = [EmployeeOffice(employee=e5, office=o3)]
+
+        ret = bulk_sync(
+            new_models=new_objs,
+            filters=None,
+            key_fields=("office_id", "employee_id"),
+            skip_deletes=True,
+            skip_updates=True,
+            select_for_update_of=("self",)
+        )
+
+        self.assertEqual(0, ret["stats"]["updated"])
+        self.assertEqual(0, ret["stats"]["deleted"])
+        self.assertEqual(1, ret["stats"]["created"])
+
+        """ eos = o3.employees.all()
+        self.assertEqual(1, eos.count()) """
 
 
 class BulkCompareTests(TestCase):

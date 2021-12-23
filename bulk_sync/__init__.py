@@ -19,6 +19,7 @@ def bulk_sync(
     skip_updates=False,
     skip_deletes=False,
     db_class=None,
+    select_for_update_of=None,
 ):
     """ Combine bulk create, update, and delete.  Make the DB match a set of in-memory objects.
 
@@ -38,6 +39,9 @@ def bulk_sync(
     `skip_deletes`: If truthy, will not perform any object deletions needed to fully sync. Defaults to not skip.
     `db_class`: (optional) Model class to operate on. If new_models always contains at least one object, this can
             be set automatically so is optional.
+    `select_for_update_of`: (optional) If passed it has to be a tuple with the non nullable fields in the query that will be
+            passed to the argument `of` to the `select_for_update` to avoid
+            "FOR UPDATE cannot be applied to the nullable side of an outer join"
     """
 
     if db_class is None:
@@ -74,12 +78,22 @@ def bulk_sync(
 
         fields = list(fields_to_update - fields_to_exclude)
 
+    if select_for_update_of and not isinstance(select_for_update_of, tuple):
+        raise ValueError(
+            "`select_for_update_of` must be a tuple with the non nullable "
+            "fields of the query."
+        )
+
     using = router.db_for_write(db_class)
     with transaction.atomic(using=using):
         objs = db_class.objects.all()
         if filters:
             objs = objs.filter(filters)
-        objs = objs.only("pk", *key_fields).select_for_update()
+
+        ofargs = {}
+        if select_for_update_of:
+            ofargs ={"of": select_for_update_of}
+        objs = objs.only("pk", *key_fields).select_for_update(**ofargs)
 
         prep_functions = defaultdict(lambda: lambda x: x)
         prep_functions.update({
