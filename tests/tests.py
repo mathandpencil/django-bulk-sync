@@ -340,8 +340,9 @@ class BulkSyncTests(TestCase):
         self.assertEqual(0, ret["stats"]["deleted"])
         self.assertEqual(1, ret["stats"]["created"])
 
-        """ eos = o3.employees.all()
-        self.assertEqual(1, eos.count()) """
+        eos = o3.employees.all()
+        self.assertEqual(1, eos.count())
+        self.assertEqual(o3, e5.office_set.first())
 
 
 class BulkCompareTests(TestCase):
