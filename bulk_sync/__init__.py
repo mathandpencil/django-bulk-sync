@@ -79,7 +79,7 @@ def bulk_sync(
         objs = db_class.objects.all()
         if filters:
             objs = objs.filter(filters)
-        objs = objs.only("pk", *key_fields).select_for_update()
+        objs = objs.only("pk", *key_fields).select_for_update().order_by('pk')
 
         prep_functions = defaultdict(lambda: lambda x: x)
         prep_functions.update({
