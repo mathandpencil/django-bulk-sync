@@ -21,7 +21,7 @@ def bulk_sync(
     db_class=None,
     select_for_update_of=None,
 ):
-    """ Combine bulk create, update, and delete.  Make the DB match a set of in-memory objects.
+    """Combine bulk create, update, and delete.  Make the DB match a set of in-memory objects.
 
     `new_models`: Django ORM objects that are the desired state.  They may or may not have `id` set.
     `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows.  If a foreign key
@@ -39,9 +39,8 @@ def bulk_sync(
     `skip_deletes`: If truthy, will not perform any object deletions needed to fully sync. Defaults to not skip.
     `db_class`: (optional) Model class to operate on. If new_models always contains at least one object, this can
             be set automatically so is optional.
-    `select_for_update_of`: (optional) If passed it has to be a tuple with the non nullable fields in the query that will be
-            passed to the argument `of` to the `select_for_update` to avoid
-            "FOR UPDATE cannot be applied to the nullable side of an outer join"
+    `select_for_update_of`: (optional) Iterable passed directly to select_for_update `of` clause to control locking of related models.
+            See https://docs.djangoproject.com/en/dev/ref/models/querysets/#select-for-update for more information.
     """
 
     if db_class is None:
@@ -78,12 +77,6 @@ def bulk_sync(
 
         fields = list(fields_to_update - fields_to_exclude)
 
-    if select_for_update_of and not isinstance(select_for_update_of, tuple):
-        raise ValueError(
-            "`select_for_update_of` must be a tuple with the non nullable "
-            "fields of the query."
-        )
-
     using = router.db_for_write(db_class)
     with transaction.atomic(using=using):
         objs = db_class.objects.all()
@@ -92,22 +85,21 @@ def bulk_sync(
 
         ofargs = {}
         if select_for_update_of:
-            ofargs ={"of": select_for_update_of}
-			
-        objs = objs.only("pk", *key_fields).select_for_update(**ofargs).order_by('pk')
+            ofargs = {"of": select_for_update_of}
+
+        objs = objs.only("pk", *key_fields).select_for_update(**ofargs).order_by("pk")
 
         prep_functions = defaultdict(lambda: lambda x: x)
-        prep_functions.update({
-            field.name: functools.partial(field.to_python)
-            for field in (db_class._meta.get_field(k) for k in key_fields)
-            if hasattr(field, 'to_python')
-        })
+        prep_functions.update(
+            {
+                field.name: functools.partial(field.to_python)
+                for field in (db_class._meta.get_field(k) for k in key_fields)
+                if hasattr(field, "to_python")
+            }
+        )
 
         def get_key(obj, prep_values=False):
-            return tuple(
-                prep_functions[k](getattr(obj, k)) if prep_values else getattr(obj, k)
-                for k in key_fields
-            )
+            return tuple(prep_functions[k](getattr(obj, k)) if prep_values else getattr(obj, k) for k in key_fields)
 
         obj_dict = {get_key(obj): obj for obj in objs}
 
@@ -150,7 +142,7 @@ def bulk_sync(
 
 
 def bulk_compare(old_models, new_models, key_fields, ignore_fields=None):
-    """ Compare two sets of models by `key_fields`.
+    """Compare two sets of models by `key_fields`.
     `old_models`: Iterable of Django ORM objects to compare.
     `new_models`: Iterable of Django ORM objects to compare.
     `key_fields`: Identifying attribute name(s) to match up `new_models` items with database rows.  If a foreign key
@@ -201,7 +193,7 @@ def bulk_compare(old_models, new_models, key_fields, ignore_fields=None):
 
 
 def compare_objs(obj1, obj2, ignore_fields=None):
-    """ Compare two Django ORM objects (presumably of the same model class).
+    """Compare two Django ORM objects (presumably of the same model class).
 
     `obj1`: The first object to compare.
     `obj2`: The second object to compare.

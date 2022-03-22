@@ -80,6 +80,8 @@ Combine bulk create, update, and delete. Make the DB match a set of in-memory ob
 -   `skip_updates`: (optional) If truthy, will not perform any object updates needed to fully sync. Defaults to not skip.
 -   `skip_deletes`: (optional) If truthy, will not perform any object deletions needed to fully sync. Defaults to not skip.
 -   `db_class`: (optional) Model class to operate on. If new_models always contains at least one object, this can be set automatically so is optional.
+-   `select_for_update_of`: (optional) Iterable passed directly to select_for_update `of` clause to control locking of related models.
+            See https://docs.djangoproject.com/en/dev/ref/models/querysets/#select-for-update for more information.
 
 -   Returns a dict:
     ```

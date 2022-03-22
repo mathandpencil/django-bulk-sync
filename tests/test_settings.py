@@ -13,3 +13,5 @@ DATABASES = {"default": DB}
 
 INSTALLED_APPS = ("bulk_sync", "tests")
 MIDDLEWARE_CLASSES = ()
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

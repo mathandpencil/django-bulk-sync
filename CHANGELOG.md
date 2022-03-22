@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [3.3.0] - 2022-03-22
+-   Force select_for_update order to prevent deadlocks. Many thanks to [@jpulec](https://github.com/jpulec) for pointing this out in #29.
+-   Support passing `of` argument to internal select_for_update. Can be useful in working around "SELECT FOR UPDATE cannot be applied to the nullable side of an outer join".  Pull request #27, thanks [@osroca](https://github.com/osroca)!
+
+## [3.2.0] - 2020-11-24
+-   Support nonstandard `pk` fields. #25.
+-   Use to_python to make sure keys are correct type. #22.
+
 ## [3.1.0] - 2020-08-28
 
 ### Added
