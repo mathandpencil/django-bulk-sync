@@ -93,7 +93,8 @@ def bulk_sync(
         ofargs = {}
         if select_for_update_of:
             ofargs ={"of": select_for_update_of}
-        objs = objs.only("pk", *key_fields).select_for_update(**ofargs)
+			
+        objs = objs.only("pk", *key_fields).select_for_update(**ofargs).order_by('pk')
 
         prep_functions = defaultdict(lambda: lambda x: x)
         prep_functions.update({
